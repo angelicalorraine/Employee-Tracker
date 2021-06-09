@@ -152,20 +152,20 @@ const addEmployee = () => {
 
         ])
         // Finds employees chosen role with correct id
-        .then(function (response) {
-            const role = response.choice;
+        .then(function (answer) {
+            const role = answer.choice;
             const newId = results.find(x => x.title === role).id;
 
             connection.query('INSERT INTO Role SET ?',
                 {
                     role_id: newId,
-                    first_name: response.first_name,
-                    last_name: response.last_name,
+                    first_name: answer.first_name,
+                    last_name: answer.last_name,
 
                 },
                 (err) => {
                     if (err) throw err;
-                    console.log(`\nEmployee ${response.first_name} ${response.last_name} was successfully added.\n`);
+                    console.log(`\nEmployee ${answer.first_name} ${answer.last_name} was successfully added.\n`);
                     createTracker();
                 });
 
