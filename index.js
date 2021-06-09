@@ -56,6 +56,8 @@ const createTracker = () => {
 };
 
 
+
+
 const addDepartment = () => {
     inquirer
         .prompt({
@@ -63,12 +65,14 @@ const addDepartment = () => {
             type: 'input',
             message: 'Name of Department'
         })
-        .then((answer) => {
+        .then(function (answer) {
             connection.query('INSERT INTO department SET ?',
-                { dept_name: answer.dept_name },
-                (err, res) => {
+                {
+                    dept_name: answer.dept_name
+                },
+                (err) => {
                     if (err) throw err;
-                    console.log(`${res.affectedRows} Employee inserted!\n`)
+                    console.log(`\nDepartment "${response.name}" was sucessfully added.\n`)
                 });
             createTracker();
         });
@@ -77,6 +81,20 @@ const addDepartment = () => {
 const addRole = () => {
     inquirer
         .prompt([
+            {
+                name: 'choice',
+                type: 'rawlist',
+                message: 'What Department does Role belong to?',
+                choices() {
+                    const choiceArray = [];
+                    results.forEach(({ dept_name }) => {
+                        choiceArray.push(dept_name);
+                    });
+                    return choiceArray;
+                },
+
+            },
+
             {
                 name: 'title',
                 type: 'input',
@@ -89,12 +107,19 @@ const addRole = () => {
             },
             // add department selection
         ])
-        .then((answer) => {
+        .then(function (answer) {
+            const dept = response.choice;
+            const newId = results.find(x => x.dept_name === dept).id;
             connection.query('INSERT INTO Role SET ?',
-                { title: answer.title, salary: answer.salary },
-                (err, res) => {
+                {
+                    dept_id: newId,
+                    title: answer.title,
+                    salary: answer.salary
+                },
+                (err) => {
                     if (err) throw err;
-                    console.log(`${res.affectedRows} Role inserted!\n`)
+                    console.log(`\nRole ${response.title} was successfully added.\n`)
+                    createTracker();
                 });
         });
 };
@@ -111,14 +136,38 @@ const addEmployee = () => {
             type: 'input',
             message: 'Employees Last Name:'
         },
-            //add role & department
-        ])
-        .then((answer) => {
-            connection.query('INSERT INTO Role SET ?',
-                { title: answer.title, salary: answer.salary },
-                (err, res) => {
-                    if (err) throw err;
-                    console.log(`${res.affectedRows} Role inserted!\n`)
+        {
+            name: 'choice',
+            type: 'rawlist',
+            message: 'What is Employees Role?',
+            choices() {
+                const choiceArray = [];
+                results.forEach(({ title }) => {
+                    choiceArray.push(title);
                 });
+                return choiceArray;
+            },
+
+        },
+
+        ])
+        // Finds employees chosen role with correct id
+        .then(function (response) {
+            const role = response.choice;
+            const newId = results.find(x => x.title === role).id;
+
+            connection.query('INSERT INTO Role SET ?',
+                {
+                    role_id: newId,
+                    first_name: response.first_name,
+                    last_name: response.last_name,
+
+                },
+                (err) => {
+                    if (err) throw err;
+                    console.log(`\nEmployee ${response.first_name} ${response.last_name} was successfully added.\n`);
+                    createTracker();
+                });
+
         });
 };
