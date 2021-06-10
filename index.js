@@ -19,11 +19,11 @@ connection.connect((err) => {
     if (err) throw err;
     console.log(`connected as id ${connection.threadId}\n`);
     //Add start function
-    createTracker();
+    companyTracker();
 })
 
 //Start of prompt - select
-const createTracker = () => {
+const companyTracker = () => {
     inquirer.prompt({
         name: 'main',
         type: 'list',
@@ -32,6 +32,7 @@ const createTracker = () => {
             'Add a Department',
             'Add a Role',
             'Add an Employee',
+            //Add view and update choice function
             'Exit',
         ],
     })
@@ -51,6 +52,7 @@ const createTracker = () => {
 
                 case 'Exit':
                     connection.end;
+                    console.log('Goodbye!');
                     break;
 
                 default:
@@ -82,10 +84,18 @@ getManagers = () => {
     })
 };
 
-getEmployees = () => {
-    connection.query("SELECT id, CONCAT_WS(' ', first_name, last_name) AS Employee_Name FROM Employee", (err, res) => {
+const viewEmployees = () => {
+    const viewAll = `SELECT employee.first_name, employee.last_name, role.title, role.salary, department.dept_name FROM (( Role
+         INNER JOIN employee ON role.id = employee.role_id)
+         INNER JOIN department ON role.department_id = department.id)
+         ORDER BY dept_name`;
+
+
+    connection.query(viewAll, (err, res) => {
         if (err) throw err;
-        employees = res;
+        console.log(`All Company Employees:\n`);
+        console.table(res);
+        companyTracker();
 
     })
 };
@@ -107,56 +117,64 @@ const addDepartment = () => {
                 },
                 (err) => {
                     if (err) throw err;
-                    console.log(`\nDepartment "${response.name}" was sucessfully added.\n`)
+                    console.log(`\nDepartment "${answer.name}" was sucessfully added.\n`)
                 });
-            createTracker();
+            companyTracker();
         });
 };
 
 const addRole = () => {
-    inquirer
-        .prompt([
-            {
-                name: 'choice',
-                type: 'rawlist',
-                message: 'What Department does Role belong to?',
-                choices() {
-                    const choiceArray = [];
-                    results.forEach(({ dept_name }) => {
-                        choiceArray.push(dept_name);
-                    });
-                    return choiceArray;
-                },
-
-            },
-
-            {
-                name: 'title',
-                type: 'input',
-                message: 'Name of Role'
-            },
-            {
-                name: 'salary',
-                type: 'input',
-                message: 'Salary Amount:'
-            },
-            // add department selection
-        ])
-        .then(function (answer) {
-            const dept = response.choice;
-            const newId = results.find(x => x.dept_name === dept).id;
-            connection.query('INSERT INTO Role SET ?',
+    connection.query('SELECT * FROM department', (err, results) => {
+        if (results.length === 0) {
+            console.log('No departments exist. Add a department first');
+            addDepartment();
+            return;
+        }
+        if (err) throw err;
+        inquirer
+            .prompt([
                 {
-                    dept_id: newId,
-                    title: answer.title,
-                    salary: answer.salary
+                    name: 'choice',
+                    type: 'rawlist',
+                    message: 'What Department does Role belong to?',
+                    choices() {
+                        const choiceArray = [];
+                        results.forEach(({ dept_name }) => {
+                            choiceArray.push(dept_name);
+                        });
+                        return choiceArray;
+                    },
+
                 },
-                (err) => {
-                    if (err) throw err;
-                    console.log(`\nRole ${response.title} was successfully added.\n`)
-                    createTracker();
-                });
-        });
+
+                {
+                    name: 'title',
+                    type: 'input',
+                    message: 'Name of Role'
+                },
+                {
+                    name: 'salary',
+                    type: 'input',
+                    message: 'Salary Amount:'
+                },
+                // add department selection
+            ])
+            .then(function (response) {
+                const dept = response.choice;
+                const newId = results.find(x => x.dept_name === dept).id;
+                connection.query('INSERT INTO Role SET ?',
+                    {
+                        dept_id: newId,
+                        title: response.title,
+                        salary: response.salary
+                    },
+                    (err) => {
+                        if (err) throw err;
+                        console.log(`\nRole ${response.title} was successfully added.\n`)
+                        companyTracker();
+                    });
+            });
+    });
 };
 
 const addEmployee = () => {
@@ -193,8 +211,6 @@ const addEmployee = () => {
 
             },
 
-
-
             ])
             // Finds employees chosen role with correct id
             .then(function (response) {
@@ -211,7 +227,7 @@ const addEmployee = () => {
                     (err) => {
                         if (err) throw err;
                         console.log(`\nEmployee ${response.first_name} ${response.last_name} was successfully added.\n`);
-                        createTracker();
+                        companyTracker();
                     });
             });
     });
