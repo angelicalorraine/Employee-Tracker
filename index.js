@@ -2,6 +2,11 @@ const mysql = require('mysql');
 const inquirer = require('inquirer');
 require('dotenv').config();
 
+let roles;
+let departments;
+let managers;
+let employees;
+
 const connection = mysql.createConnection({
     host: 'localhost',
     port: 3306,
@@ -31,7 +36,7 @@ const createTracker = () => {
         ],
     })
         .then((answer) => {
-            switch (answer.action) {
+            switch (answer.main) {
                 case 'Add a Department':
                     addDepartment();
                     break;
@@ -40,7 +45,7 @@ const createTracker = () => {
                     addRole();
                     break;
 
-                case 'Add a Employee':
+                case 'Add an Employee':
                     addEmployee();
                     break;
 
@@ -53,6 +58,36 @@ const createTracker = () => {
                     break;
             }
         });
+};
+
+getRoles = () => {
+    connection.query('SELECT id, title FROM role', (err, res) => {
+        if (err) throw err;
+        roles = res;
+    })
+};
+
+getDepartments = () => {
+    connection.query('SELECT id, name FROM Department', (err, res) => {
+        if (err) throw err;
+        departments = res;
+    })
+};
+
+getManagers = () => {
+    connection.query("SELECT id, first_name, last_name, CONCAT_WS(' ', first_name, last_name) AS managers FROM Employee", (err, res) => {
+        if (err) throw err;
+        managers = res;
+
+    })
+};
+
+getEmployees = () => {
+    connection.query("SELECT id, CONCAT_WS(' ', first_name, last_name) AS Employee_Name FROM Employee", (err, res) => {
+        if (err) throw err;
+        employees = res;
+
+    })
 };
 
 
@@ -125,49 +160,59 @@ const addRole = () => {
 };
 
 const addEmployee = () => {
-    inquirer
-        .prompt([{
-            name: 'first_name',
-            type: 'input',
-            message: 'Employees First Name:'
-        },
-        {
-            name: 'last_name',
-            type: 'input',
-            message: 'Employees Last Name:'
-        },
-        {
-            name: 'choice',
-            type: 'rawlist',
-            message: 'What is Employees Role?',
-            choices() {
-                const choiceArray = [];
-                results.forEach(({ title }) => {
-                    choiceArray.push(title);
-                });
-                return choiceArray;
+    connection.query('SELECT * FROM role', (err, results) => {
+        if (results.length === 0) {
+            console.log('No roles exist. Add a role first');
+            addRole();
+            return;
+        }
+        if (err) throw err;
+
+        inquirer
+            .prompt([{
+                name: 'first_name',
+                type: 'input',
+                message: 'Employees First Name:'
+            },
+            {
+                name: 'last_name',
+                type: 'input',
+                message: 'Employees Last Name:'
+            },
+            {
+                name: 'choice',
+                type: 'rawlist',
+                message: 'What is Employees Role?',
+                choices() {
+                    const choiceArray = [];
+                    results.forEach(({ title }) => {
+                        choiceArray.push(title);
+                    });
+                    return choiceArray;
+                },
+
             },
 
-        },
 
-        ])
-        // Finds employees chosen role with correct id
-        .then(function (answer) {
-            const role = answer.choice;
-            const newId = results.find(x => x.title === role).id;
 
-            connection.query('INSERT INTO Role SET ?',
-                {
-                    role_id: newId,
-                    first_name: answer.first_name,
-                    last_name: answer.last_name,
+            ])
+            // Finds employees chosen role with correct id
+            .then(function (response) {
+                const role = response.choice;
+                const newId = results.find(x => x.title === role).id;
 
-                },
-                (err) => {
-                    if (err) throw err;
-                    console.log(`\nEmployee ${answer.first_name} ${answer.last_name} was successfully added.\n`);
-                    createTracker();
-                });
+                connection.query('INSERT INTO Employee SET ?',
+                    {
+                        role_id: newId,
+                        first_name: response.first_name,
+                        last_name: response.last_name,
 
-        });
+                    },
+                    (err) => {
+                        if (err) throw err;
+                        console.log(`\nEmployee ${response.first_name} ${response.last_name} was successfully added.\n`);
+                        createTracker();
+                    });
+            });
+    });
 };
